@@ -56,7 +56,7 @@ public class FrameTableEntry {
 
     @Override
     public String toString() {
-        return "Page Number: " + pageNumber + " Empty: " + !occupied;
+        return "Process "+ processNumber + ": Page " + pageNumber;
     }
 
 

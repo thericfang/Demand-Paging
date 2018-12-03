@@ -64,14 +64,14 @@ public class Process {
         setCurrentPageNumber();
     }
 
-    public int setNextTranslation(ArrayList<Integer> randomNumList, int randomNumberCounter) { // returns how much to increment randomnumbercounter by
-        int counter = 0;
-        int r = randomNumList.get(randomNumberCounter);
+    public void setNextTranslation(ArrayList<Integer> randomNumList) { // returns how much to increment randomnumbercounter by
+        int r = randomNumList.get(0);
+        randomNumList.remove(0);
         // System.out.println("Random number used: " + r);
         // System.out.println(randomNumberCounter);
         double y = r / (Integer.MAX_VALUE + 1d);
-        System.out.println(r +" ratio: " + y);
-        counter++;
+        // System.out.println(r +" ratio: " + y);
+     
         if (y < a) {
             nextReferenceAddress = (currentReferenceAddress + 1) % processSize; 
         }
@@ -82,12 +82,11 @@ public class Process {
             nextReferenceAddress = (currentReferenceAddress + 4) % processSize;
         }
         else {
-            r = randomNumList.get(counter + randomNumberCounter);
-            counter++;
-            System.out.println(r);
+            r = randomNumList.get(0);
+            randomNumList.remove(0);
+            // System.out.println(r);
             nextReferenceAddress = r % processSize;
         }
-        return counter;
 
         // System.out.println("Next Reference Address: " + nextReferenceAddress);
         
