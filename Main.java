@@ -23,22 +23,16 @@ public class Main {
             System.exit(0);
         }
         randomNumbersReader();
-        System.out.println(machineSize);
-        System.out.println(pageSize);
-        System.out.println(processSize);
-        System.out.println(jobMix);
-        System.out.println(numOfReferences);
-        System.out.println(replacementAlg);
+        System.out.println("The machine size is " + machineSize + ".");
+        System.out.println("The page size is " + pageSize + ".");
+        System.out.println("The process size is " + processSize + ".");
+        System.out.println("The job mix number is " + jobMix + ".");
+        System.out.println("The number of references per process is " + numOfReferences + ".");
+        System.out.println("The replacement algorithm is " + replacementAlg + ".");
         
-        List<FrameTableEntry> frameTable = new ArrayList<FrameTableEntry>();
-        // Frame Table with Frame Table Entries; initially empty
         int numOfPages = machineSize / pageSize;
-        for (int i = 0; i < numOfPages; i++) {
-            frameTable.add(new FrameTableEntry(pageSize, i)); // adds frame table entries of size pageSize and pageNum of i
-        }
-        for (FrameTableEntry f : frameTable) {
-            System.out.println(f);
-        }
+        FrameTableEntry[] frameTable = new FrameTableEntry[numOfPages];
+       
         List<Process> processList = new ArrayList<Process>();
         
         switch (jobMix) {
@@ -70,17 +64,17 @@ public class Main {
         }
 
     
-        simulateLRU(frameTable, processList);
+        simulate(frameTable, processList, replacementAlg);
 
         
     }
 
-    public static void simulateLRU (List<FrameTableEntry> frameTable, List<Process> processList) {
+    public static void simulate(FrameTableEntry[] frameTable, List<Process> processList, String replacementAlg) {
         int quantumCounter = 0;
-        Integer randomNumberCounter = 0;
         List<Process> terminatedList = new ArrayList<Process>();
         Iterator<Process> it = processList.iterator();
-        int referenceAddress = 0;
+        Queue<FrameTableEntry> LRU = new LinkedList<FrameTableEntry>();
+        Stack<FrameTableEntry> LIFO = new Stack<FrameTableEntry>();
         int cycle = 1;
         while (processList.size()!=terminatedList.size()) { // Do until processes terminate
             Process p;
@@ -99,32 +93,16 @@ public class Main {
                 else { 
                     p.setCurrentReference();                    
                 }
-                System.out.print("Process " + p.getProcessNumber() + " references address " + p.getCurrentReferenceAddress() + " (Page " + p.getCurrentPageNumber() + 
-                ") at time " + cycle + ": ");
-                if (isPageFault(frameTable, p)) { // If there's a page fault, page fault counter++ and evict a frame for page.
-                    p.incrementPageFaultCounter(); 
-                    evictAndReplaceLRU(frameTable, p, cycle);
-                   
-                    // System.out.println("Reference Address " + p.getCurrentReferenceAddress());
-                    // System.out.println("Process " + p.getProcessNumber() + " Page number " + p.getCurrentPageNumber());
+                // System.out.print("Process " + p.getProcessNumber() + " references address " + p.getCurrentReferenceAddress() + " (Page " + p.getCurrentPageNumber() + 
+                // ") at time " + cycle + ": ");
+
+                boolean hit = resolveAddress(frameTable, p, LRU); // Resolve Address and return true if there is a hit
+                if (!hit) { // If there was not a hit, aka if there was a page fault, evict
+                    evictAndReplace(frameTable, p, cycle, replacementAlg, LRU, randomNumList, LIFO);
                 }
-                else {
-                    int processNumber = p.getProcessNumber();
-                    int pageNumber = p.getCurrentPageNumber();
-                    for (FrameTableEntry walk : frameTable) {
-                        if (walk.equals(processNumber, pageNumber)) {
-                            System.out.println("Hit at frame " + walk.getFrameNumber());
-                            frameTable.add(walk);
-                            frameTable.remove(walk.getFrameNumber());
-                            break;
-                        }
-                    }
-                }
-                // for (FrameTableEntry f : frameTable) {
-                //     System.out.println("Frame Number "+ f.getFrameNumber() + ": Process " + f.getProcessNumber() + " Page " + f.getPageNumber());
-                // }
                 
-                randomNumberCounter+= p.setNextTranslation(randomNumList, randomNumberCounter); // add to random number counter
+                
+                p.setNextTranslation(randomNumList); // add to random number counter
                 
                 cycle++;
                 quantumCounter++;
@@ -150,40 +128,88 @@ public class Main {
         }
     }
 
-    public static boolean isPageFault (List<FrameTableEntry> frameTable, Process p) { // References the frame table. Returns true if there's a fault, false if there's a hit.
+    public static boolean resolveAddress(FrameTableEntry[] frameTable, Process p, Queue<FrameTableEntry> LRU) {
         // Convert referenceAddress to a page number
-        // Things needed: process number, page number (range). 
         int processNumber = p.getProcessNumber();
         int pageNumber = p.getCurrentPageNumber();
-        for (FrameTableEntry walk : frameTable) {
-            if (walk.equals(processNumber, pageNumber)) {
-                return false;
+        for (int i = 0; i < frameTable.length; i++) {
+            if (frameTable[i] != null && frameTable[i].equals(processNumber, pageNumber)) {
+                // System.out.println("Hit at frame " + i);
+                LRU.remove(frameTable[i]);
+                LRU.add(frameTable[i]);
+                return true;
             }
         }
-        return true;   
+        return false;
+        
 
     }
 
-    public static void evictAndReplaceLRU (List<FrameTableEntry> frameTable, Process p, int cycle) {
-        FrameTableEntry temp = frameTable.get(0); // Maintain the frame numbers but add p process number and page number
-        frameTable.remove(0);
-        if (!temp.isOccupied()) { // if the entry is initially empty
-            System.out.println("Page Fault. Using free frame " + temp.getFrameNumber() + " for initial loading");
-            temp.setCycleLoaded(cycle); // add cycle loaded to FTE
-            temp.setEntry(p.getProcessNumber(), p.getCurrentPageNumber(), p);
+    public static void evictAndReplace(FrameTableEntry[] frameTable, Process p, int cycle, String replacementAlg, Queue<FrameTableEntry> LRU, ArrayList<Integer> randomNumList, Stack<FrameTableEntry> LIFO) {
+        p.incrementPageFaultCounter(); // Increment page fault counter
+        boolean processed = false;
+        for (int i = frameTable.length-1; i >= 0; i--) {
+            if (frameTable[i] == null) { // If frames are free
+                // System.out.println("Page Fault. Using free frame " + i + " for initial loading");
+                FrameTableEntry temp = new FrameTableEntry(p.getPageSize(), i);
+                temp.setEntry(p.getProcessNumber(), p.getCurrentPageNumber(), p);
+                temp.setCycleLoaded(cycle);
+                frameTable[i] = temp;
+                LRU.add(temp);
+                LIFO.add(temp);
+                processed = true;
+                break;
+            }
         }
-        else { // Evicting existing entry
-            System.out.println("Page Fault. Evicting page " + temp.getPageNumber() + " of process " + temp.getProcessNumber() + " from frame " + temp.getFrameNumber());
-            int residency = cycle - temp.getCycleLoaded(); // Residency of evicted frame
-            // Add residency to process
-            temp.getProcess().incrementEvictions(); // Increment evictions to calculate average residency
-            temp.getProcess().addResidencyTime(residency); 
-            temp.setEntry(p.getProcessNumber(), p.getCurrentPageNumber(), p);
-            temp.setCycleLoaded(cycle);
-        }
+        if (!processed) {
+            // Evict a frame depending on algorithm
+            if (replacementAlg.equalsIgnoreCase("lru")) { // Determine which frame is the least recently used
+                FrameTableEntry temp = LRU.poll();
+                // System.out.println("Page Fault. Evicting page " + temp.getPageNumber() + " of process " + temp.getProcessNumber() + " from frame " + temp.getFrameNumber());
+                int residency = cycle - temp.getCycleLoaded();
+                    // Add residency to process
+                temp.getProcess().incrementEvictions(); // Increment evictions to calculate average residency
+                temp.getProcess().addResidencyTime(residency); 
+                temp.setEntry(p.getProcessNumber(), p.getCurrentPageNumber(), p);
+                temp.setCycleLoaded(cycle);
+                LRU.add(temp);
+            }
+            else if (replacementAlg.equalsIgnoreCase("random")) {
+                int r = randomNumList.get(0);
+                randomNumList.remove(0);
+                int i = r % frameTable.length;
+                // double y = r / (Integer.MAX_VALUE + 1d);
+                // System.out.println(r + "ratio:" + y);
+                // int i = (int)(y * frameTable.length - 1);
+                
+                FrameTableEntry temp = frameTable[i];
+                // System.out.println("Page Fault. Evicting page " + temp.getPageNumber() + " of process " + temp.getProcessNumber() + " from frame " + temp.getFrameNumber());
+                int residency = cycle - temp.getCycleLoaded();
+                    // Add residency to process
+                temp.getProcess().incrementEvictions(); // Increment evictions to calculate average residency
+                temp.getProcess().addResidencyTime(residency); 
+                temp.setEntry(p.getProcessNumber(), p.getCurrentPageNumber(), p);
+                temp.setCycleLoaded(cycle);
+            }
+            else if (replacementAlg.equalsIgnoreCase("lifo")) {
+                FrameTableEntry temp = LIFO.peek();
+                // System.out.println("Page Fault. Evicting page " + temp.getPageNumber() + " of process " + temp.getProcessNumber() + " from frame " + temp.getFrameNumber());
+                int residency = cycle - temp.getCycleLoaded();
+                    // Add residency to process
+                temp.getProcess().incrementEvictions(); // Increment evictions to calculate average residency
+                temp.getProcess().addResidencyTime(residency); 
+                temp.setEntry(p.getProcessNumber(), p.getCurrentPageNumber(), p);
+                temp.setCycleLoaded(cycle);
+                LIFO.add(temp);
+            }
 
-        frameTable.add(temp); // the most recently edited entry was added to the end of the list. 
+        }
+    
+        
+        
+        
     }
+
 
     public static void printOutput(List<Process> terminatedList) {
         double overallAverageResidency = 0;
@@ -192,17 +218,16 @@ public class Main {
         int totalFaults = 0;
         for (Process p : terminatedList) {
             if (p.getEvictions() == 0) { // If evictions is 0, there is no residency.
-                System.out.println("\nProcess " + p.getProcessNumber() + " had " + p.getPageFaultCounter() + " faults.");
-                System.out.println("\twith no evictions, the average residency is undefined");
+                System.out.println("Process " + p.getProcessNumber() + " had " + p.getPageFaultCounter() + " faults.");
+                System.out.println("\tWith no evictions, the average residency is undefined.");
                 totalResidency += p.getResidency();
             }
             else {
                 double averageResidency = p.getResidency() / (double)p.getEvictions();
                 totalEvictions += p.getEvictions();
                 totalResidency += p.getResidency();
-                System.out.println("\nProcess " + p.getProcessNumber() + " had " + p.getPageFaultCounter() + " faults, "
-                    + p.getEvictions() + " evictions, " + p.getResidency() + " cycles in residency, and " 
-                    + averageResidency + " average residency");
+                System.out.println("Process " + p.getProcessNumber() + " had " + p.getPageFaultCounter() + " faults and " 
+                    + averageResidency + " average residency.");
                 overallAverageResidency += averageResidency;
              
 
@@ -212,12 +237,12 @@ public class Main {
         }
         if (totalEvictions == 0) {
             System.out.println("\nThe total number of faults is " + totalFaults + ".");
-            System.out.println("\twith no evictions, the overall average residency is undefined");
+            System.out.println("\tWith no evictions, the overall average residency is undefined.");
  
         }
         else {
             overallAverageResidency = totalResidency / (double)totalEvictions;
-            System.out.println("\nThe total number of faults is " + totalFaults + " and the overall average residency is " + overallAverageResidency);
+            System.out.println("\nThe total number of faults is " + totalFaults + " and the overall average residency is " + overallAverageResidency + ".");
         }
        
         
