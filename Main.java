@@ -30,9 +30,11 @@ public class Main {
         System.out.println(numOfReferences);
         System.out.println(replacementAlg);
         
-        List<FrameTableEntry> frameTable = new ArrayList<FrameTableEntry>();
+        // List<FrameTableEntry> frameTable = new ArrayList<FrameTableEntry>();
         // Frame Table with Frame Table Entries; initially empty
         int numOfPages = machineSize / pageSize;
+        FrameTableEntry frameTable = new FrameTableEntry[numOfPages];
+
         for (int i = 0; i < numOfPages; i++) {
             frameTable.add(new FrameTableEntry(pageSize, i)); // adds frame table entries of size pageSize and pageNum of i
         }
