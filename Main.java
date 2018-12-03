@@ -23,12 +23,12 @@ public class Main {
             System.exit(0);
         }
         randomNumbersReader();
-        System.out.println(machineSize);
-        System.out.println(pageSize);
-        System.out.println(processSize);
-        System.out.println(jobMix);
-        System.out.println(numOfReferences);
-        System.out.println(replacementAlg);
+        System.out.println("The machine size is " + machineSize + ".");
+        System.out.println("The page size is " + pageSize + ".");
+        System.out.println("The process size is " + processSize + ".");
+        System.out.println("The job mix number is " + jobMix + ".");
+        System.out.println("The number of references per process is " + numOfReferences + ".");
+        System.out.println("The replacement algorithm is " + replacementAlg + ".");
         
         int numOfPages = machineSize / pageSize;
         FrameTableEntry[] frameTable = new FrameTableEntry[numOfPages];
@@ -218,17 +218,16 @@ public class Main {
         int totalFaults = 0;
         for (Process p : terminatedList) {
             if (p.getEvictions() == 0) { // If evictions is 0, there is no residency.
-                System.out.println("\nProcess " + p.getProcessNumber() + " had " + p.getPageFaultCounter() + " faults.");
-                System.out.println("\twith no evictions, the average residency is undefined");
+                System.out.println("Process " + p.getProcessNumber() + " had " + p.getPageFaultCounter() + " faults.");
+                System.out.println("\tWith no evictions, the average residency is undefined.");
                 totalResidency += p.getResidency();
             }
             else {
                 double averageResidency = p.getResidency() / (double)p.getEvictions();
                 totalEvictions += p.getEvictions();
                 totalResidency += p.getResidency();
-                System.out.println("\nProcess " + p.getProcessNumber() + " had " + p.getPageFaultCounter() + " faults, "
-                    + p.getEvictions() + " evictions, " + p.getResidency() + " cycles in residency, and " 
-                    + averageResidency + " average residency");
+                System.out.println("Process " + p.getProcessNumber() + " had " + p.getPageFaultCounter() + " faults and " 
+                    + averageResidency + " average residency.");
                 overallAverageResidency += averageResidency;
              
 
@@ -238,12 +237,12 @@ public class Main {
         }
         if (totalEvictions == 0) {
             System.out.println("\nThe total number of faults is " + totalFaults + ".");
-            System.out.println("\twith no evictions, the overall average residency is undefined");
+            System.out.println("\tWith no evictions, the overall average residency is undefined.");
  
         }
         else {
             overallAverageResidency = totalResidency / (double)totalEvictions;
-            System.out.println("\nThe total number of faults is " + totalFaults + " and the overall average residency is " + overallAverageResidency);
+            System.out.println("\nThe total number of faults is " + totalFaults + " and the overall average residency is " + overallAverageResidency + ".");
         }
        
         
